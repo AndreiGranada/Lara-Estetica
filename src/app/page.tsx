@@ -14,7 +14,9 @@ import {
   procedureGroups,
   valueHighlights,
 } from "@/lib/clinic";
+import { getSiteUrl } from "@/lib/site";
 
+const siteUrl = getSiteUrl();
 const directWhatsappUrl = buildWhatsappUrl(directWhatsappMessage);
 const clinicFrontImageUrl = "/image.png";
 const clinicMapSearchQuery = encodeURIComponent(clinicInfo.address);
@@ -26,12 +28,18 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   name: clinicInfo.name,
+  alternateName: ["Estética da Lara", "Lara Estica"],
+  description:
+    "Clínica de estética em Pelotas com foco em estética regenerativa, contorno corporal e qualidade da pele.",
+  url: siteUrl,
   address: {
     "@type": "PostalAddress",
     streetAddress: clinicInfo.address,
     addressCountry: "BR",
   },
   telephone: clinicInfo.whatsappDisplay,
+  areaServed: "Pelotas, RS",
+  keywords: "estetica da lara, esteticas em pelotas, clinica de estetica, lara estica, estetica",
 };
 
 const procedureExampleTexts: Record<string, { description: string; focus?: string }> = {

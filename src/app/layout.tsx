@@ -17,9 +17,9 @@ const displayFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Lara Schneider Estética Regenerativa",
+  title: "Lara Schneider Estética Regenerativa | Clínica de Estética em Pelotas",
   description:
-    "Consultório de estética com atendimento personalizado, cadastro opcional para cupom de avaliação gratuita e contato imediato via WhatsApp.",
+    "Estética da Lara em Pelotas: clínica de estética com atendimento personalizado, protocolos regenerativos e contato imediato via WhatsApp.",
   metadataBase: new URL(siteUrl),
   alternates: {
     canonical: "/",
@@ -30,6 +30,14 @@ export const metadata: Metadata = {
     apple: [{ url: "/icon.svg" }],
   },
   keywords: [
+    "estetica da lara",
+    "estéticas em pelotas",
+    "esteticas em pelotas",
+    "clinica de estetica",
+    "clínica de estética",
+    "lara estica",
+    "estetica",
+    "estética",
     "estética regenerativa",
     "bioestimulador de colágeno",
     "harmonização glútea",
@@ -38,9 +46,9 @@ export const metadata: Metadata = {
     "estética em Rio Grande do Sul",
   ],
   openGraph: {
-    title: "Lara Schneider Estética Regenerativa",
+    title: "Lara Schneider Estética Regenerativa | Clínica de Estética em Pelotas",
     description:
-      "Procedimentos para contorno, regeneração da pele, harmonização e performance corporal.",
+      "Estética da Lara: clínica de estética em Pelotas com procedimentos para contorno, regeneração da pele e harmonização.",
     images: [
       {
         url: `${siteUrl}/opengraph-image`,
@@ -56,9 +64,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lara Schneider Estética Regenerativa",
+    title: "Lara Schneider Estética Regenerativa | Clínica de Estética em Pelotas",
     description:
-      "Cadastro opcional para cupom de avaliação gratuita e atendimento imediato via WhatsApp.",
+      "Estética da Lara em Pelotas com atendimento via WhatsApp e avaliação gratuita.",
     images: [`${siteUrl}/opengraph-image`],
   },
 };
