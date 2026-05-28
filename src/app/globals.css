@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3e8d4;
+  --foreground: #3e2428;
+  --surface: #fff8ef;
+  --surface-soft: #f7ebdd;
+  --brand: #a44651;
+  --brand-strong: #8b3743;
+  --brand-soft: #eed5d8;
+  --accent: #c4914c;
+  --accent-soft: #e7cfa8;
+  --muted: #6b4d47;
+  --border-soft: #dab98f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-body);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 15% 20%, #eed5d8 0%, transparent 35%),
+    radial-gradient(circle at 85% 8%, #e7cfa8 0%, transparent 30%),
+    linear-gradient(170deg, #f7ebdd 0%, #f3e8d4 60%, #f6eadd 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.surface-card {
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 24px 60px -40px rgba(69, 35, 40, 0.35);
+  backdrop-filter: blur(5px);
+}
+
+.hero-ring {
+  position: relative;
+}
+
+.hero-ring::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border-radius: 28px;
+  border: 1px solid color-mix(in srgb, var(--brand-soft) 70%, white);
+  pointer-events: none;
+}
+
+.procedure-detail {
+  display: none;
+}
+
+.procedure-detail:target {
+  display: block;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border-soft));
+  box-shadow: 0 14px 30px -24px rgba(69, 35, 40, 0.45);
 }
