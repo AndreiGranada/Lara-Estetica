@@ -39,7 +39,8 @@ const jsonLd = {
   },
   telephone: clinicInfo.whatsappDisplay,
   areaServed: "Pelotas, RS",
-  keywords: "estetica da lara, esteticas em pelotas, clinica de estetica, lara estica, estetica",
+  keywords:
+    "estetica da lara, estéticas em pelotas, esteticas em pelotas, clinica de estetica, clínica de estética, clinica estetica pelotas, estetica pelotas, lara estica, estetica, estética",
 };
 
 const procedureExampleTexts: Record<string, { description: string; focus?: string }> = {

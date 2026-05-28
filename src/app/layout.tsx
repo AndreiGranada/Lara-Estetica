@@ -35,6 +35,8 @@ export const metadata: Metadata = {
     "esteticas em pelotas",
     "clinica de estetica",
     "clínica de estética",
+    "clinica estetica pelotas",
+    "estetica pelotas",
     "lara estica",
     "estetica",
     "estética",
