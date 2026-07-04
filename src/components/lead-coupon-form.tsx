@@ -70,6 +70,26 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
+function closePopup(popup: Window | null) {
+  if (popup && !popup.closed) {
+    popup.close();
+  }
+}
+
+function navigatePopup(popup: Window | null, url: string): boolean {
+  if (!popup || popup.closed) {
+    return false;
+  }
+
+  try {
+    popup.location.href = url;
+    return true;
+  } catch {
+    closePopup(popup);
+    return false;
+  }
+}
+
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -135,10 +155,10 @@ export function LeadEvaluationForm() {
 
     if (typeof window !== "undefined") {
       if (AUTO_OPEN_EVALUATION_WHATSAPP) {
-        whatsappWindow = window.open("", "_blank", "noopener,noreferrer");
+        whatsappWindow = window.open("about:blank", "_blank");
       }
       if (AUTO_OPEN_EVALUATION_SHARE_TAB) {
-        shareWindow = window.open("", "_blank", "noopener,noreferrer");
+        shareWindow = window.open("about:blank", "_blank");
       }
     }
 
@@ -157,12 +177,8 @@ export function LeadEvaluationForm() {
         }),
       });
     } catch {
-      if (whatsappWindow && !whatsappWindow.closed) {
-        whatsappWindow.close();
-      }
-      if (shareWindow && !shareWindow.closed) {
-        shareWindow.close();
-      }
+      closePopup(whatsappWindow);
+      closePopup(shareWindow);
 
       const message = "Não foi possível conectar ao servidor. Tente novamente.";
       setRequestError(message);
@@ -171,18 +187,31 @@ export function LeadEvaluationForm() {
       return;
     }
 
-    const payload = (await response.json()) as LeadApiSuccess | LeadApiError;
+    let payload: LeadApiSuccess | LeadApiError | null = null;
+
+    try {
+      payload = (await response.json()) as LeadApiSuccess | LeadApiError;
+    } catch {
+      payload = null;
+    }
 
     if (!response.ok) {
-      if (whatsappWindow && !whatsappWindow.closed) {
-        whatsappWindow.close();
-      }
-      if (shareWindow && !shareWindow.closed) {
-        shareWindow.close();
-      }
+      closePopup(whatsappWindow);
+      closePopup(shareWindow);
 
-      const errorPayload = payload as LeadApiError;
+      const errorPayload = (payload ?? {}) as LeadApiError;
       const message = errorPayload.error ?? "Erro ao gerar cupom de avaliação gratuita. Tente novamente.";
+      setRequestError(message);
+      trackEvent("lead_form_submit_error", { message });
+      toast.error(message);
+      return;
+    }
+
+    if (!payload || !("couponCode" in payload) || !("leadId" in payload)) {
+      closePopup(whatsappWindow);
+      closePopup(shareWindow);
+
+      const message = "Resposta inesperada do servidor ao gerar o cupom. Tente novamente.";
       setRequestError(message);
       trackEvent("lead_form_submit_error", { message });
       toast.error(message);
@@ -212,17 +241,17 @@ export function LeadEvaluationForm() {
       const shareTabUrl = `${window.location.origin}/cupom-avaliacao?${params.toString()}`;
 
       if (AUTO_OPEN_EVALUATION_WHATSAPP) {
-        if (whatsappWindow && !whatsappWindow.closed) {
-          whatsappWindow.location.href = generatedWhatsappUrl;
-        } else {
+        const openedWhatsapp = navigatePopup(whatsappWindow, generatedWhatsappUrl);
+
+        if (!openedWhatsapp) {
           window.open(generatedWhatsappUrl, "_blank", "noopener,noreferrer");
         }
       }
 
       if (AUTO_OPEN_EVALUATION_SHARE_TAB) {
-        if (shareWindow && !shareWindow.closed) {
-          shareWindow.location.href = shareTabUrl;
-        } else {
+        const openedShareTab = navigatePopup(shareWindow, shareTabUrl);
+
+        if (!openedShareTab) {
           window.open(shareTabUrl, "_blank", "noopener,noreferrer");
         }
       }
