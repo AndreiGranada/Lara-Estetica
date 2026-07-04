@@ -67,6 +67,32 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  const fallbackCopy = () => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "absolute";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  };
+
+  try {
+    if (typeof navigator.clipboard?.writeText === "function") {
+      await navigator.clipboard.writeText(text);
+    } else {
+      fallbackCopy();
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -198,29 +224,29 @@ export function LeadEvaluationForm() {
       return;
     }
 
-    const fallbackCopy = () => {
-      const textarea = document.createElement("textarea");
-      textarea.value = evaluationCode;
-      textarea.setAttribute("readonly", "true");
-      textarea.style.position = "absolute";
-      textarea.style.left = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      textarea.remove();
-    };
+    const copied = await copyTextToClipboard(evaluationCode);
 
-    try {
-      if (typeof navigator.clipboard?.writeText === "function") {
-        await navigator.clipboard.writeText(evaluationCode);
-      } else {
-        fallbackCopy();
-      }
-
+    if (copied) {
       trackEvent("evaluation_coupon_code_copy", { evaluationCode });
       toast.success(`Código ${evaluationCode} copiado.`);
-    } catch {
+    } else {
       toast.error("Não foi possível copiar o código automaticamente.");
+    }
+  };
+
+  const copyWhatsappMessage = async () => {
+    if (!evaluationCode || !customerName) {
+      return;
+    }
+
+    const message = buildEvaluationWhatsappMessage(customerName, evaluationCode);
+    const copied = await copyTextToClipboard(message);
+
+    if (copied) {
+      trackEvent("evaluation_coupon_message_copy", { evaluationCode });
+      toast.success("Mensagem para WhatsApp copiada.");
+    } else {
+      toast.error("Não foi possível copiar a mensagem automaticamente.");
     }
   };
 
@@ -469,6 +495,15 @@ export function LeadEvaluationForm() {
               className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
             >
               Copiar código do cupom
+            </button>
+
+            <button
+              type="button"
+              onClick={copyWhatsappMessage}
+              disabled={!evaluationCode || !customerName}
+              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Copiar mensagem para WhatsApp
             </button>
           </div>
 
