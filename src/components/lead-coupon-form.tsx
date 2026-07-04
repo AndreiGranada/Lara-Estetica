@@ -70,6 +70,8 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
+const WHATSAPP_REDIRECT_DELAY_MS = 1500;
+
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -195,7 +197,7 @@ export function LeadEvaluationForm() {
       // Navigate the same tab after showing the generated coupon to avoid popup blocking on mobile.
       setTimeout(() => {
         window.location.assign(generatedWhatsappUrl);
-      }, 500);
+      }, WHATSAPP_REDIRECT_DELAY_MS);
     }
 
     trackEvent("evaluation_generated", {
@@ -342,7 +344,8 @@ export function LeadEvaluationForm() {
 
           {AUTO_OPEN_EVALUATION_WHATSAPP ? (
             <p className="mt-2 text-xs text-[#6b4d47]">
-              WhatsApp aberto automaticamente com a mensagem padrão.
+              WhatsApp será aberto automaticamente em instantes com a mensagem
+              padrão.
             </p>
           ) : AUTO_OPEN_EVALUATION_SHARE_TAB ? (
             <p className="mt-2 text-xs text-[#6b4d47]">
