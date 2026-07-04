@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaWhatsapp } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
@@ -93,6 +93,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 }
 
 export function LeadEvaluationForm() {
+  const couponCardRef = useRef<HTMLDivElement | null>(null);
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
   const [evaluationIssuedAtIso, setEvaluationIssuedAtIso] = useState<string | null>(null);
@@ -320,6 +321,12 @@ export function LeadEvaluationForm() {
     toast.success(
       `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`
     );
+
+    // Move viewport to the generated coupon card so mobile users can continue the flow quickly.
+    setTimeout(() => {
+      couponCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+
     reset({ name: "", phone: "", consent: false });
   };
 
@@ -411,7 +418,7 @@ export function LeadEvaluationForm() {
       </form>
 
       {evaluationCode ? (
-        <div className="mt-5 rounded-2xl border border-[#dab98f] bg-[#f7ebdd] p-4">
+        <div ref={couponCardRef} className="mt-5 rounded-2xl border border-[#dab98f] bg-[#f7ebdd] p-4">
           <p className="text-sm text-[#6b4d47]">Seu cupom de avaliação gratuita:</p>
           <p className="mt-1 text-4xl font-semibold tracking-[0.25em] text-[#a44651]">{evaluationCode}</p>
 
