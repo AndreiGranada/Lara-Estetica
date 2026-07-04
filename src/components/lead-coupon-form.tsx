@@ -540,32 +540,50 @@ export function LeadEvaluationForm() {
           </div>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={copyWhatsappMessage}
-              disabled={!evaluationCode || !customerName}
-              className="inline-flex items-center justify-center rounded-xl bg-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white shadow-[0_8px_20px_-10px_rgba(164,70,81,0.8)] transition hover:bg-[#8b3743] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              1. Copiar mensagem para WhatsApp
-            </button>
+            {stepStatus.messageCopied ? (
+              <span className="inline-flex items-center justify-center rounded-xl border border-[#9bc4a6] bg-[#e7f6eb] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#2f6e44]">
+                1. Mensagem copiada
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={copyWhatsappMessage}
+                disabled={!evaluationCode || !customerName}
+                className="inline-flex items-center justify-center rounded-xl bg-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white shadow-[0_8px_20px_-10px_rgba(164,70,81,0.8)] transition hover:bg-[#8b3743] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                1. Copiar mensagem para WhatsApp
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={shareCouponOnWhatsapp}
-              disabled={!evaluationWhatsappUrl}
-              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              2. Compartilhar no WhatsApp
-            </button>
+            {stepStatus.whatsappOpened ? (
+              <span className="inline-flex items-center justify-center rounded-xl border border-[#9bc4a6] bg-[#e7f6eb] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#2f6e44]">
+                2. WhatsApp acionado
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={shareCouponOnWhatsapp}
+                disabled={!evaluationWhatsappUrl}
+                className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                2. Compartilhar no WhatsApp
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={saveCouponImage}
-              disabled={!couponImageDataUrl}
-              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              3. Salvar imagem do cupom
-            </button>
+            {stepStatus.imageSaved ? (
+              <span className="inline-flex items-center justify-center rounded-xl border border-[#9bc4a6] bg-[#e7f6eb] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#2f6e44]">
+                3. Imagem salva
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={saveCouponImage}
+                disabled={!couponImageDataUrl}
+                className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                3. Salvar imagem do cupom
+              </button>
+            )}
 
             <button
               type="button"
