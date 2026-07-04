@@ -426,11 +426,6 @@ export function LeadEvaluationForm() {
           <p className="mt-2 text-xs text-[#6b4d47]">
             Fluxo recomendado: 1) copiar mensagem, 2) compartilhar no WhatsApp, 3) salvar imagem.
           </p>
-          {!stepStatus.messageCopied ? (
-            <p className="mt-1 text-xs text-[#8b3743]">
-              O passo 2 é liberado após concluir o passo 1.
-            </p>
-          ) : null}
 
           <div className="mt-4 rounded-xl border border-[#dab98f] bg-white p-2">
             {couponImageDataUrl ? (
@@ -473,7 +468,7 @@ export function LeadEvaluationForm() {
               <button
                 type="button"
                 onClick={shareCouponOnWhatsapp}
-                disabled={!evaluationWhatsappUrl || !stepStatus.messageCopied}
+                disabled={!evaluationWhatsappUrl}
                 className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 2. Compartilhar no WhatsApp
