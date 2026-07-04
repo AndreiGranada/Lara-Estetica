@@ -70,28 +70,6 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-function openInNewTab(url: string): boolean {
-  try {
-    const popup = window.open(url, "_blank", "noopener,noreferrer");
-    return popup !== null;
-  } catch {
-    return false;
-  }
-}
-
-function navigatePopup(popup: Window | null, url: string): boolean {
-  if (!popup || popup.closed) {
-    return false;
-  }
-
-  try {
-    popup.location.href = url;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -99,7 +77,6 @@ export function LeadEvaluationForm() {
   const [evaluationValidUntilLabel, setEvaluationValidUntilLabel] = useState<string | null>(
     null
   );
-  const [autoOpenFailed, setAutoOpenFailed] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
   const {
@@ -151,15 +128,7 @@ export function LeadEvaluationForm() {
 
   const onSubmit = async (values: LeadFormInput) => {
     setRequestError(null);
-    setAutoOpenFailed(false);
     trackEvent("lead_form_submit_attempt");
-
-    let whatsappPopup: Window | null = null;
-
-    if (typeof window !== "undefined" && AUTO_OPEN_EVALUATION_WHATSAPP) {
-      // Open synchronously on user gesture to reduce mobile popup blocking.
-      whatsappPopup = window.open(`https://wa.me/${clinicInfo.whatsappNumber}`, "_blank");
-    }
 
     const normalizedPhone = normalizeToE164Brazil(values.phone);
 
@@ -222,24 +191,11 @@ export function LeadEvaluationForm() {
     setEvaluationIssuedAtIso(issuedAtIso);
     setEvaluationValidUntilLabel(formatDatePtBr(validUntil));
 
-    if (typeof window !== "undefined") {
-      let blockedAnyAutoOpen = false;
-
-      if (AUTO_OPEN_EVALUATION_WHATSAPP) {
-        const openedWhatsapp =
-          navigatePopup(whatsappPopup, generatedWhatsappUrl) ||
-          openInNewTab(generatedWhatsappUrl);
-
-        if (!openedWhatsapp) {
-          blockedAnyAutoOpen = true;
-        }
-      }
-
-      setAutoOpenFailed(blockedAnyAutoOpen);
-
-      if (blockedAnyAutoOpen) {
-        toast.message("O navegador bloqueou a abertura automática. Use os botões manuais abaixo.");
-      }
+    if (typeof window !== "undefined" && AUTO_OPEN_EVALUATION_WHATSAPP) {
+      // Navigate the same tab after showing the generated coupon to avoid popup blocking on mobile.
+      setTimeout(() => {
+        window.location.assign(generatedWhatsappUrl);
+      }, 500);
     }
 
     trackEvent("evaluation_generated", {
@@ -428,12 +384,6 @@ export function LeadEvaluationForm() {
             ) : null}
           </div>
 
-          {autoOpenFailed ? (
-            <p className="mt-2 text-xs text-[#6b4d47]">
-              O navegador bloqueou a abertura automática de nova aba. Use os
-              atalhos manuais acima.
-            </p>
-          ) : null}
         </div>
       ) : null}
     </div>
