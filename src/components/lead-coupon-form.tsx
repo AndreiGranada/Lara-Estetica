@@ -20,6 +20,24 @@ import {
 } from "@/lib/evaluation-coupon-image";
 import { leadSchema, type LeadFormInput } from "@/lib/lead-schema";
 
+function isIosBrowser(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger|TikTok|Twitter/i.test(
+    navigator.userAgent
+  );
+}
+
 function extractDigits(input: string): string {
   return input.replace(/\D/g, "");
 }
@@ -103,6 +121,7 @@ export function LeadEvaluationForm() {
     whatsappOpened: false,
     imageSaved: false,
   });
+  const [browserShareHint, setBrowserShareHint] = useState<string | null>(null);
 
   const {
     register,
@@ -199,6 +218,7 @@ export function LeadEvaluationForm() {
     }
 
     const message = buildEvaluationWhatsappMessage(customerName, evaluationCode);
+    const shouldShowBrowserHint = isIosBrowser() || isInAppBrowser();
 
     try {
       if (couponImageDataUrl && typeof navigator.share === "function") {
@@ -218,6 +238,7 @@ export function LeadEvaluationForm() {
             files: [imageFile],
           });
           trackEvent("evaluation_whatsapp_share_native", { evaluationCode });
+          setBrowserShareHint(null);
           setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
           return;
         }
@@ -228,6 +249,7 @@ export function LeadEvaluationForm() {
           url: evaluationWhatsappUrl,
         });
         trackEvent("evaluation_whatsapp_share_native_text", { evaluationCode });
+        setBrowserShareHint(null);
         setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
         return;
       }
@@ -243,7 +265,19 @@ export function LeadEvaluationForm() {
       toast.message("Abrindo WhatsApp. Caso não abra, use o botão de link direto.");
     }
 
-    window.location.assign(evaluationWhatsappDirectUrl);
+    if (shouldShowBrowserHint) {
+      setBrowserShareHint(
+        "Se o WhatsApp não abrir, toque em 'Link direto do WhatsApp' ou abra esta página no Safari/Chrome do aparelho."
+      );
+    } else {
+      setBrowserShareHint(null);
+    }
+
+    try {
+      window.location.assign(evaluationWhatsappDirectUrl);
+    } catch {
+      toast.error("Não foi possível abrir o WhatsApp automaticamente neste navegador.");
+    }
   };
 
   const copyWhatsappMessage = async () => {
@@ -271,6 +305,7 @@ export function LeadEvaluationForm() {
       whatsappOpened: false,
       imageSaved: false,
     });
+    setBrowserShareHint(null);
     trackEvent("lead_form_submit_attempt");
 
     const normalizedPhone = normalizeToE164Brazil(values.phone);
@@ -505,6 +540,8 @@ export function LeadEvaluationForm() {
             {evaluationWhatsappDirectUrl ? (
               <a
                 href={evaluationWhatsappDirectUrl}
+                target="_self"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
               >
                 Link direto do WhatsApp
@@ -512,6 +549,12 @@ export function LeadEvaluationForm() {
             ) : null}
 
           </div>
+
+            {browserShareHint ? (
+              <div className="mt-3 rounded-xl border border-[#dab98f] bg-white/80 p-3 text-xs text-[#6b4d47]">
+                {browserShareHint}
+              </div>
+            ) : null}
 
           <div className="mt-3 rounded-xl border border-[#dab98f] bg-white/80 p-3 text-xs text-[#6b4d47]">
             <p className="font-semibold uppercase tracking-[0.06em] text-[#8b3743]">Status do fluxo</p>
