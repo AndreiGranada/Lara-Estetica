@@ -94,6 +94,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 
 export function LeadEvaluationForm() {
   const couponCardRef = useRef<HTMLDivElement | null>(null);
+  const [shouldScrollToCoupon, setShouldScrollToCoupon] = useState(false);
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
   const [evaluationIssuedAtIso, setEvaluationIssuedAtIso] = useState<string | null>(null);
@@ -170,6 +171,15 @@ export function LeadEvaluationForm() {
       active = false;
     };
   }, [customerName, evaluationCode, evaluationIssuedAtIso, evaluationWhatsappUrl]);
+
+  useEffect(() => {
+    if (!shouldScrollToCoupon) {
+      return;
+    }
+
+    couponCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setShouldScrollToCoupon(false);
+  }, [shouldScrollToCoupon]);
 
   const saveCouponImage = () => {
     if (!couponImageDataUrl || !evaluationCode) {
@@ -321,11 +331,7 @@ export function LeadEvaluationForm() {
     toast.success(
       `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`
     );
-
-    // Move viewport to the generated coupon card so mobile users can continue the flow quickly.
-    setTimeout(() => {
-      couponCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
+    setShouldScrollToCoupon(true);
 
     reset({ name: "", phone: "", consent: false });
   };
