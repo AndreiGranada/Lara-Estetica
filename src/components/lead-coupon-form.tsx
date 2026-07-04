@@ -92,6 +92,17 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function buildWhatsappFallbackUrls(message: string): string[] {
+  const encodedMessage = encodeURIComponent(message);
+  const phone = clinicInfo.whatsappNumber;
+
+  return [
+    `whatsapp://send?phone=${phone}&text=${encodedMessage}`,
+    `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`,
+    `https://wa.me/${phone}?text=${encodedMessage}`,
+  ];
+}
+
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -214,6 +225,15 @@ export function LeadEvaluationForm() {
           setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
           return;
         }
+
+        await navigator.share({
+          title: "Cupom de avaliação gratuita",
+          text: message,
+          url: evaluationWhatsappUrl,
+        });
+        trackEvent("evaluation_whatsapp_share_native_text", { evaluationCode });
+        setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
+        return;
       }
     } catch {
       // Ignore and fallback below.
@@ -221,7 +241,24 @@ export function LeadEvaluationForm() {
 
     trackEvent("evaluation_whatsapp_open_same_tab", { evaluationCode });
     setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
-    window.location.assign(evaluationWhatsappUrl);
+
+    const fallbackUrls = buildWhatsappFallbackUrls(message);
+
+    for (const url of fallbackUrls) {
+      try {
+        window.location.href = url;
+        return;
+      } catch {
+        // Continue fallback chain.
+      }
+    }
+
+    const copied = await copyTextToClipboard(message);
+    if (copied) {
+      toast.message("Não foi possível abrir o WhatsApp automaticamente. Mensagem copiada.");
+    } else {
+      toast.error("Não foi possível abrir o WhatsApp neste navegador.");
+    }
   };
 
   const copyWhatsappMessage = async () => {
