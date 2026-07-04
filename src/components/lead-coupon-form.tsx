@@ -1,12 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaWhatsapp } from "react-icons/fa";
 import { Toaster, toast } from "sonner";
-import { TrackedLink } from "@/components/tracked-link";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildEvaluationWhatsappMessage,
@@ -15,13 +15,10 @@ import {
 } from "@/lib/clinic";
 import {
   addDays,
+  buildEvaluationCouponImageDataUrl,
   EVALUATION_COUPON_VALID_DAYS,
   formatDatePtBr,
 } from "@/lib/evaluation-coupon-image";
-import {
-  AUTO_OPEN_EVALUATION_SHARE_TAB,
-  AUTO_OPEN_EVALUATION_WHATSAPP,
-} from "@/lib/evaluation-coupon-config";
 import { leadSchema, type LeadFormInput } from "@/lib/lead-schema";
 
 function extractDigits(input: string): string {
@@ -70,8 +67,6 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-const WHATSAPP_REDIRECT_DELAY_MS = 1500;
-
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -79,6 +74,7 @@ export function LeadEvaluationForm() {
   const [evaluationValidUntilLabel, setEvaluationValidUntilLabel] = useState<string | null>(
     null
   );
+  const [couponImageDataUrl, setCouponImageDataUrl] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
 
   const {
@@ -110,26 +106,96 @@ export function LeadEvaluationForm() {
     return buildWhatsappUrl(message);
   }, [customerName, evaluationCode]);
 
-  const evaluationShareTabUrl = useMemo(() => {
-    if (!evaluationCode || !customerName || !evaluationIssuedAtIso) {
-      return "";
+  useEffect(() => {
+    let active = true;
+
+    if (!evaluationCode || !customerName || !evaluationIssuedAtIso || !evaluationWhatsappUrl) {
+      return () => {
+        active = false;
+      };
     }
 
-    if (typeof window === "undefined") {
-      return "";
+    const issuedAt = new Date(evaluationIssuedAtIso);
+    const validUntil = addDays(issuedAt, EVALUATION_COUPON_VALID_DAYS);
+
+    buildEvaluationCouponImageDataUrl({
+      evaluationCode,
+      customerName,
+      whatsappUrl: evaluationWhatsappUrl,
+      issuedAt,
+      validUntil,
+    })
+      .then((value) => {
+        if (active) {
+          setCouponImageDataUrl(value);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCouponImageDataUrl(null);
+          toast.error("Não foi possível gerar a imagem do cupom.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customerName, evaluationCode, evaluationIssuedAtIso, evaluationWhatsappUrl]);
+
+  const saveCouponImage = () => {
+    if (!couponImageDataUrl || !evaluationCode) {
+      return;
     }
 
-    const params = new URLSearchParams({
-      code: evaluationCode,
-      name: customerName,
-      issuedAt: evaluationIssuedAtIso,
-    });
+    const link = document.createElement("a");
+    link.href = couponImageDataUrl;
+    link.download = `cupom-avaliacao-${evaluationCode}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    trackEvent("evaluation_coupon_image_download", { evaluationCode });
+  };
 
-    return `${window.location.origin}/cupom-avaliacao?${params.toString()}`;
-  }, [customerName, evaluationCode, evaluationIssuedAtIso]);
+  const shareCouponOnWhatsapp = async () => {
+    if (!evaluationCode || !customerName || !evaluationWhatsappUrl) {
+      return;
+    }
+
+    const message = buildEvaluationWhatsappMessage(customerName, evaluationCode);
+
+    try {
+      if (couponImageDataUrl && typeof navigator.share === "function") {
+        const imageResponse = await fetch(couponImageDataUrl);
+        const imageBlob = await imageResponse.blob();
+        const imageFile = new File([imageBlob], `cupom-avaliacao-${evaluationCode}.png`, {
+          type: "image/png",
+        });
+
+        const canShareFiles =
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [imageFile] });
+
+        if (canShareFiles) {
+          await navigator.share({
+            title: "Cupom de avaliação gratuita",
+            text: message,
+            files: [imageFile],
+          });
+          trackEvent("evaluation_whatsapp_share_native", { evaluationCode });
+          return;
+        }
+      }
+    } catch {
+      // Ignore and fallback below.
+    }
+
+    trackEvent("evaluation_whatsapp_open_same_tab", { evaluationCode });
+    window.location.assign(evaluationWhatsappUrl);
+  };
 
   const onSubmit = async (values: LeadFormInput) => {
     setRequestError(null);
+    setCouponImageDataUrl(null);
     trackEvent("lead_form_submit_attempt");
 
     const normalizedPhone = normalizeToE164Brazil(values.phone);
@@ -182,8 +248,6 @@ export function LeadEvaluationForm() {
     const successPayload = payload as LeadApiSuccess;
     const generatedCode = successPayload.couponCode;
     const generatedName = values.name.trim();
-    const generatedMessage = buildEvaluationWhatsappMessage(generatedName, generatedCode);
-    const generatedWhatsappUrl = buildWhatsappUrl(generatedMessage);
     const issuedAt = new Date();
     const validUntil = addDays(issuedAt, EVALUATION_COUPON_VALID_DAYS);
     const issuedAtIso = issuedAt.toISOString();
@@ -193,30 +257,14 @@ export function LeadEvaluationForm() {
     setEvaluationIssuedAtIso(issuedAtIso);
     setEvaluationValidUntilLabel(formatDatePtBr(validUntil));
 
-    if (typeof window !== "undefined" && AUTO_OPEN_EVALUATION_WHATSAPP) {
-      // Navigate the same tab after showing the generated coupon to avoid popup blocking on mobile.
-      setTimeout(() => {
-        window.location.assign(generatedWhatsappUrl);
-      }, WHATSAPP_REDIRECT_DELAY_MS);
-    }
-
     trackEvent("evaluation_generated", {
       evaluationCode: generatedCode,
       leadId: successPayload.leadId,
-      flow:
-        AUTO_OPEN_EVALUATION_WHATSAPP
-          ? "open_whatsapp_only"
-          : AUTO_OPEN_EVALUATION_SHARE_TAB
-          ? "open_share_tab_only"
-          : "manual_open",
+      flow: "generated_on_page_manual_actions",
     });
 
     const successMessage =
-      AUTO_OPEN_EVALUATION_WHATSAPP
-        ? `Cupom ${generatedCode} liberado. WhatsApp aberto com mensagem padrão.`
-        : AUTO_OPEN_EVALUATION_SHARE_TAB
-        ? `Cupom ${generatedCode} liberado. Aba de compartilhamento aberta.`
-        : `Cupom ${generatedCode} liberado.`;
+      `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`;
 
     toast.success(successMessage);
     reset({ name: values.name, phone: maskBrazilPhone(values.phone), consent: true });
@@ -342,49 +390,46 @@ export function LeadEvaluationForm() {
             </p>
           ) : null}
 
-          {AUTO_OPEN_EVALUATION_WHATSAPP ? (
-            <p className="mt-2 text-xs text-[#6b4d47]">
-              WhatsApp será aberto automaticamente em instantes com a mensagem
-              padrão.
-            </p>
-          ) : AUTO_OPEN_EVALUATION_SHARE_TAB ? (
-            <p className="mt-2 text-xs text-[#6b4d47]">
-              Uma nova aba foi aberta para compartilhar ou baixar a imagem deste
-              cupom.
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-[#6b4d47]">
-              Nenhuma aba foi aberta automaticamente. Use os atalhos da página
-              de compartilhamento quando necessário.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-[#6b4d47]">
+            O cupom foi gerado nesta página. Escolha abaixo se deseja
+            compartilhar no WhatsApp ou salvar a imagem no seu celular.
+          </p>
+
+          <div className="mt-4 rounded-xl border border-[#dab98f] bg-white p-2">
+            {couponImageDataUrl ? (
+              <Image
+                src={couponImageDataUrl}
+                alt={`Imagem do cupom de avaliação gratuita ${evaluationCode}`}
+                width={1280}
+                height={720}
+                unoptimized
+                className="h-auto w-full rounded-lg"
+              />
+            ) : (
+              <div className="flex h-42 items-center justify-center rounded-lg bg-[#f7ebdd] px-4 text-center text-sm text-[#6b4d47]">
+                Gerando imagem do cupom...
+              </div>
+            )}
+          </div>
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            {evaluationWhatsappUrl ? (
-              <TrackedLink
-                href={evaluationWhatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                eventName="manual_evaluation_whatsapp_open_click"
-                eventPayload={{ evaluationCode }}
-                className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
-              >
-                Abrir WhatsApp manualmente
-              </TrackedLink>
-            ) : null}
+            <button
+              type="button"
+              onClick={shareCouponOnWhatsapp}
+              disabled={!evaluationWhatsappUrl}
+              className="inline-flex items-center justify-center rounded-xl bg-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#8b3743] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Compartilhar no WhatsApp
+            </button>
 
-            {evaluationShareTabUrl ? (
-              <TrackedLink
-                href={evaluationShareTabUrl}
-                target="_blank"
-                rel="noreferrer"
-                eventName="manual_evaluation_share_tab_open_click"
-                eventPayload={{ evaluationCode }}
-                className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
-              >
-                Abrir página de compartilhamento
-              </TrackedLink>
-            ) : null}
+            <button
+              type="button"
+              onClick={saveCouponImage}
+              disabled={!couponImageDataUrl}
+              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Salvar imagem do cupom
+            </button>
           </div>
 
         </div>
