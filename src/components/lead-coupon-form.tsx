@@ -193,6 +193,37 @@ export function LeadEvaluationForm() {
     window.location.assign(evaluationWhatsappUrl);
   };
 
+  const copyCouponCode = async () => {
+    if (!evaluationCode) {
+      return;
+    }
+
+    const fallbackCopy = () => {
+      const textarea = document.createElement("textarea");
+      textarea.value = evaluationCode;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "absolute";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    };
+
+    try {
+      if (typeof navigator.clipboard?.writeText === "function") {
+        await navigator.clipboard.writeText(evaluationCode);
+      } else {
+        fallbackCopy();
+      }
+
+      trackEvent("evaluation_coupon_code_copy", { evaluationCode });
+      toast.success(`Código ${evaluationCode} copiado.`);
+    } catch {
+      toast.error("Não foi possível copiar o código automaticamente.");
+    }
+  };
+
   const onSubmit = async (values: LeadFormInput) => {
     setRequestError(null);
     setCouponImageDataUrl(null);
@@ -429,6 +460,15 @@ export function LeadEvaluationForm() {
               className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
             >
               Salvar imagem do cupom
+            </button>
+
+            <button
+              type="button"
+              onClick={copyCouponCode}
+              disabled={!evaluationCode}
+              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Copiar código do cupom
             </button>
           </div>
 
