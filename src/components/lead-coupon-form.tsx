@@ -155,6 +155,11 @@ export function LeadEvaluationForm() {
   });
   const [couponImageDataUrl, setCouponImageDataUrl] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [stepStatus, setStepStatus] = useState({
+    messageCopied: false,
+    whatsappOpened: false,
+    imageSaved: false,
+  });
 
   const {
     register,
@@ -233,6 +238,8 @@ export function LeadEvaluationForm() {
     link.click();
     link.remove();
     trackEvent("evaluation_coupon_image_download", { evaluationCode });
+    setStepStatus((previous) => ({ ...previous, imageSaved: true }));
+    toast.success("Imagem do cupom salva no aparelho.");
   };
 
   const shareCouponOnWhatsapp = async () => {
@@ -260,6 +267,7 @@ export function LeadEvaluationForm() {
             files: [imageFile],
           });
           trackEvent("evaluation_whatsapp_share_native", { evaluationCode });
+          setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
           return;
         }
       }
@@ -268,6 +276,7 @@ export function LeadEvaluationForm() {
     }
 
     trackEvent("evaluation_whatsapp_open_same_tab", { evaluationCode });
+    setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
     window.location.assign(evaluationWhatsappUrl);
   };
 
@@ -296,6 +305,7 @@ export function LeadEvaluationForm() {
 
     if (copied) {
       trackEvent("evaluation_coupon_message_copy", { evaluationCode });
+      setStepStatus((previous) => ({ ...previous, messageCopied: true }));
       toast.success("Mensagem para WhatsApp copiada.");
     } else {
       toast.error("Não foi possível copiar a mensagem automaticamente.");
@@ -319,6 +329,11 @@ export function LeadEvaluationForm() {
   const onSubmit = async (values: LeadFormInput) => {
     setRequestError(null);
     setCouponImageDataUrl(null);
+    setStepStatus({
+      messageCopied: false,
+      whatsappOpened: false,
+      imageSaved: false,
+    });
     trackEvent("lead_form_submit_attempt");
 
     const normalizedPhone = normalizeToE164Brazil(values.phone);
@@ -568,6 +583,13 @@ export function LeadEvaluationForm() {
             >
               Limpar cupom deste aparelho
             </button>
+          </div>
+
+          <div className="mt-3 rounded-xl border border-[#dab98f] bg-white/80 p-3 text-xs text-[#6b4d47]">
+            <p className="font-semibold uppercase tracking-[0.06em] text-[#8b3743]">Status do fluxo</p>
+            <p className="mt-1">1. Mensagem copiada: {stepStatus.messageCopied ? "OK" : "Pendente"}</p>
+            <p>2. WhatsApp acionado: {stepStatus.whatsappOpened ? "OK" : "Pendente"}</p>
+            <p>3. Imagem salva: {stepStatus.imageSaved ? "OK" : "Pendente"}</p>
           </div>
         </div>
       ) : null}
