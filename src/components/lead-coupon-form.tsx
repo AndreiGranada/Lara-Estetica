@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaWhatsapp } from "react-icons/fa";
@@ -126,7 +125,6 @@ export function LeadEvaluationForm() {
     defaultValues: {
       name: "",
       phone: "",
-      consent: false,
     },
   });
 
@@ -374,7 +372,7 @@ export function LeadEvaluationForm() {
       });
     }, 120);
 
-    reset({ name: "", phone: "", consent: false });
+    reset({ name: "", phone: "" });
   };
 
   return (
@@ -422,27 +420,6 @@ export function LeadEvaluationForm() {
           />
           {errors.phone ? <p className="mt-1 text-xs text-[#8e2f3a]">{errors.phone.message}</p> : null}
         </div>
-
-        <label className="flex items-start gap-3 rounded-xl border border-[#dab98f] bg-[#fff8ef]/80 p-3 text-sm text-[#6b4d47]">
-          <input
-            type="checkbox"
-            {...register("consent")}
-            className="mt-1 h-4 w-4 rounded border-[#dab98f] text-[#a44651]"
-          />
-          <span className="leading-6">
-            Autorizo o uso dos meus dados para receber meu cupom de avaliação gratuita e contato de
-            atendimento da {clinicInfo.name}. Li e concordo com a{" "}
-            <Link
-              href="/politica-de-privacidade"
-              target="_blank"
-              className="font-semibold text-[#a44651] underline underline-offset-2 hover:text-[#8b3743]"
-            >
-              Política de Privacidade
-            </Link>
-            .
-          </span>
-        </label>
-        {errors.consent ? <p className="text-xs text-[#8e2f3a]">{errors.consent.message}</p> : null}
 
         {requestError ? (
           <div className="rounded-xl border border-[#d7a7ae] bg-[#fae9ec] p-3 text-sm text-[#8e2f3a]">

@@ -25,9 +25,6 @@ export const leadSchema = z.object({
       (value) => hasValidBrazilianLength(value),
       "Use um telefone com DDD válido (10 ou 11 dígitos).",
     ),
-  consent: z
-    .boolean()
-    .refine((value) => value, "Você precisa aceitar os termos para receber o cupom de avaliação gratuita."),
 });
 
 export type LeadFormInput = z.infer<typeof leadSchema>;

@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, phone, consent } = parsed.data;
+    const { name, phone } = parsed.data;
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.couponCounter.upsert({
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
           phone,
           couponSerial,
           couponCode,
-          consentGiven: consent,
+          consentGiven: true,
           consentAt: new Date(),
         },
       });
