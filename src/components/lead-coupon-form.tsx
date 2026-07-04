@@ -67,6 +67,14 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
+const EVALUATION_COUPON_STORAGE_KEY = "lara:evaluation-coupon:last";
+
+type PersistedCoupon = {
+  code: string;
+  customerName: string;
+  issuedAtIso: string;
+};
+
 async function copyTextToClipboard(text: string): Promise<boolean> {
   const fallbackCopy = () => {
     const textarea = document.createElement("textarea");
@@ -102,6 +110,41 @@ export function LeadEvaluationForm() {
   );
   const [couponImageDataUrl, setCouponImageDataUrl] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(EVALUATION_COUPON_STORAGE_KEY);
+
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as PersistedCoupon;
+
+      if (!parsed.code || !parsed.customerName || !parsed.issuedAtIso) {
+        window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+        return;
+      }
+
+      const issuedAt = new Date(parsed.issuedAtIso);
+
+      if (Number.isNaN(issuedAt.getTime())) {
+        window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+        return;
+      }
+
+      setEvaluationCode(parsed.code);
+      setCustomerName(parsed.customerName);
+      setEvaluationIssuedAtIso(parsed.issuedAtIso);
+      setEvaluationValidUntilLabel(formatDatePtBr(addDays(issuedAt, EVALUATION_COUPON_VALID_DAYS)));
+    } catch {
+      window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+    }
+  }, []);
 
   const {
     register,
@@ -313,6 +356,19 @@ export function LeadEvaluationForm() {
     setCustomerName(generatedName);
     setEvaluationIssuedAtIso(issuedAtIso);
     setEvaluationValidUntilLabel(formatDatePtBr(validUntil));
+
+    if (typeof window !== "undefined") {
+      const persistedCoupon: PersistedCoupon = {
+        code: generatedCode,
+        customerName: generatedName,
+        issuedAtIso,
+      };
+
+      window.localStorage.setItem(
+        EVALUATION_COUPON_STORAGE_KEY,
+        JSON.stringify(persistedCoupon)
+      );
+    }
 
     trackEvent("evaluation_generated", {
       evaluationCode: generatedCode,
