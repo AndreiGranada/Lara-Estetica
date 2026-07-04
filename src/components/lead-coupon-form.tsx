@@ -490,8 +490,7 @@ export function LeadEvaluationForm() {
           ) : null}
 
           <p className="mt-2 text-xs text-[#6b4d47]">
-            O cupom foi gerado nesta página. Escolha abaixo se deseja compartilhar no WhatsApp ou
-            salvar a imagem no seu celular.
+            Fluxo recomendado: 1) copiar mensagem, 2) compartilhar no WhatsApp, 3) salvar imagem.
           </p>
 
           <div className="mt-4 rounded-xl border border-[#dab98f] bg-white p-2">
@@ -514,11 +513,20 @@ export function LeadEvaluationForm() {
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              onClick={shareCouponOnWhatsapp}
-              disabled={!evaluationWhatsappUrl}
+              onClick={copyWhatsappMessage}
+              disabled={!evaluationCode || !customerName}
               className="inline-flex items-center justify-center rounded-xl bg-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-white transition hover:bg-[#8b3743] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Compartilhar no WhatsApp
+              1. Copiar mensagem para WhatsApp
+            </button>
+
+            <button
+              type="button"
+              onClick={shareCouponOnWhatsapp}
+              disabled={!evaluationWhatsappUrl}
+              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              2. Compartilhar no WhatsApp
             </button>
 
             <button
@@ -527,7 +535,7 @@ export function LeadEvaluationForm() {
               disabled={!couponImageDataUrl}
               className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Salvar imagem do cupom
+              3. Salvar imagem do cupom
             </button>
 
             <button
@@ -537,15 +545,6 @@ export function LeadEvaluationForm() {
               className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
             >
               Copiar código do cupom
-            </button>
-
-            <button
-              type="button"
-              onClick={copyWhatsappMessage}
-              disabled={!evaluationCode || !customerName}
-              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Copiar mensagem para WhatsApp
             </button>
           </div>
         </div>
