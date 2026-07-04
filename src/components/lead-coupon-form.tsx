@@ -320,7 +320,7 @@ export function LeadEvaluationForm() {
     toast.success(
       `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`
     );
-    reset({ name: values.name, phone: maskBrazilPhone(values.phone), consent: true });
+    reset({ name: "", phone: "", consent: false });
   };
 
   return (
