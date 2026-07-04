@@ -145,6 +145,15 @@ export function LeadEvaluationForm() {
     return buildWhatsappUrl(message);
   }, [customerName, evaluationCode]);
 
+  const evaluationWhatsappDirectUrl = useMemo(() => {
+    if (!evaluationCode || !customerName) {
+      return "";
+    }
+
+    const message = buildEvaluationWhatsappMessage(customerName, evaluationCode);
+    return `https://api.whatsapp.com/send?phone=${clinicInfo.whatsappNumber}&text=${encodeURIComponent(message)}`;
+  }, [customerName, evaluationCode]);
+
   useEffect(() => {
     let active = true;
 
@@ -471,6 +480,9 @@ export function LeadEvaluationForm() {
           <p className="mt-2 text-xs text-[#6b4d47]">
             Fluxo recomendado: 1) copiar mensagem, 2) compartilhar no WhatsApp, 3) salvar imagem.
           </p>
+          <p className="mt-1 text-xs text-[#8b3743]">
+            Se o botão 2 não abrir, use o botão de link direto do WhatsApp.
+          </p>
 
           <div className="mt-4 rounded-xl border border-[#dab98f] bg-white p-2">
             {couponImageDataUrl ? (
@@ -534,6 +546,15 @@ export function LeadEvaluationForm() {
                 3. Salvar imagem do cupom
               </button>
             )}
+
+            {evaluationWhatsappDirectUrl ? (
+              <a
+                href={evaluationWhatsappDirectUrl}
+                className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
+              >
+                Link direto do WhatsApp
+              </a>
+            ) : null}
 
           </div>
 
