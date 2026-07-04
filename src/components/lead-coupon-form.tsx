@@ -51,9 +51,8 @@ function maskBrazilPhone(input: string): string {
 
 function normalizeToE164Brazil(input: string): string {
   const rawDigits = extractDigits(input);
-  const localDigits = rawDigits.startsWith("55") && rawDigits.length > 11
-    ? rawDigits.slice(2)
-    : rawDigits;
+  const localDigits =
+    rawDigits.startsWith("55") && rawDigits.length > 11 ? rawDigits.slice(2) : rawDigits;
   return `+55${localDigits}`;
 }
 
@@ -74,6 +73,39 @@ type PersistedCoupon = {
   customerName: string;
   issuedAtIso: string;
 };
+
+function readPersistedCoupon(): PersistedCoupon | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(EVALUATION_COUPON_STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as PersistedCoupon;
+
+    if (!parsed.code || !parsed.customerName || !parsed.issuedAtIso) {
+      window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+      return null;
+    }
+
+    const issuedAt = new Date(parsed.issuedAtIso);
+
+    if (Number.isNaN(issuedAt.getTime())) {
+      window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
+    return null;
+  }
+}
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
   const fallbackCopy = () => {
@@ -102,49 +134,27 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 }
 
 export function LeadEvaluationForm() {
-  const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
-  const [customerName, setCustomerName] = useState<string>("");
-  const [evaluationIssuedAtIso, setEvaluationIssuedAtIso] = useState<string | null>(null);
-  const [evaluationValidUntilLabel, setEvaluationValidUntilLabel] = useState<string | null>(
-    null
+  const [initialPersistedCoupon] = useState<PersistedCoupon | null>(() => readPersistedCoupon());
+  const [evaluationCode, setEvaluationCode] = useState<string | null>(
+    initialPersistedCoupon?.code ?? null
   );
+  const [customerName, setCustomerName] = useState<string>(
+    initialPersistedCoupon?.customerName ?? ""
+  );
+  const [evaluationIssuedAtIso, setEvaluationIssuedAtIso] = useState<string | null>(
+    initialPersistedCoupon?.issuedAtIso ?? null
+  );
+  const [evaluationValidUntilLabel, setEvaluationValidUntilLabel] = useState<string | null>(() => {
+    if (!initialPersistedCoupon?.issuedAtIso) {
+      return null;
+    }
+
+    return formatDatePtBr(
+      addDays(new Date(initialPersistedCoupon.issuedAtIso), EVALUATION_COUPON_VALID_DAYS)
+    );
+  });
   const [couponImageDataUrl, setCouponImageDataUrl] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const raw = window.localStorage.getItem(EVALUATION_COUPON_STORAGE_KEY);
-
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as PersistedCoupon;
-
-      if (!parsed.code || !parsed.customerName || !parsed.issuedAtIso) {
-        window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
-        return;
-      }
-
-      const issuedAt = new Date(parsed.issuedAtIso);
-
-      if (Number.isNaN(issuedAt.getTime())) {
-        window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
-        return;
-      }
-
-      setEvaluationCode(parsed.code);
-      setCustomerName(parsed.customerName);
-      setEvaluationIssuedAtIso(parsed.issuedAtIso);
-      setEvaluationValidUntilLabel(formatDatePtBr(addDays(issuedAt, EVALUATION_COUPON_VALID_DAYS)));
-    } catch {
-      window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
-    }
-  }, []);
 
   const {
     register,
@@ -241,8 +251,7 @@ export function LeadEvaluationForm() {
         });
 
         const canShareFiles =
-          typeof navigator.canShare === "function" &&
-          navigator.canShare({ files: [imageFile] });
+          typeof navigator.canShare === "function" && navigator.canShare({ files: [imageFile] });
 
         if (canShareFiles) {
           await navigator.share({
@@ -330,14 +339,15 @@ export function LeadEvaluationForm() {
 
     if (!response.ok) {
       const errorPayload = (payload ?? {}) as LeadApiError;
-      const message = errorPayload.error ?? "Erro ao gerar cupom de avaliação gratuita. Tente novamente.";
+      const message =
+        errorPayload.error ?? "Erro ao gerar cupom de avaliação gratuita. Tente novamente.";
       setRequestError(message);
       trackEvent("lead_form_submit_error", { message });
       toast.error(message);
       return;
     }
 
-    if (!payload || !("couponCode" in payload) || !("leadId" in payload)) {
+    if (!payload || !('couponCode' in payload) || !('leadId' in payload)) {
       const message = "Resposta inesperada do servidor ao gerar o cupom. Tente novamente.";
       setRequestError(message);
       trackEvent("lead_form_submit_error", { message });
@@ -364,10 +374,7 @@ export function LeadEvaluationForm() {
         issuedAtIso,
       };
 
-      window.localStorage.setItem(
-        EVALUATION_COUPON_STORAGE_KEY,
-        JSON.stringify(persistedCoupon)
-      );
+      window.localStorage.setItem(EVALUATION_COUPON_STORAGE_KEY, JSON.stringify(persistedCoupon));
     }
 
     trackEvent("evaluation_generated", {
@@ -376,10 +383,9 @@ export function LeadEvaluationForm() {
       flow: "generated_on_page_manual_actions",
     });
 
-    const successMessage =
-      `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`;
-
-    toast.success(successMessage);
+    toast.success(
+      `Cupom ${generatedCode} liberado. Compartilhe no WhatsApp ou salve a imagem abaixo.`
+    );
     reset({ name: values.name, phone: maskBrazilPhone(values.phone), consent: true });
   };
 
@@ -394,17 +400,13 @@ export function LeadEvaluationForm() {
         Garanta seu cupom de avaliação gratuita
       </h3>
       <p className="mt-2 text-sm leading-6 text-[#6b4d47]">
-        O cadastro é opcional, mas necessário para liberar seu cupom de
-        avaliação gratuita. Depois de gerar o código, você envia no WhatsApp da
-        clínica.
+        O cadastro é opcional, mas necessário para liberar seu cupom de avaliação gratuita. Depois
+        de gerar o código, você envia no WhatsApp da clínica.
       </p>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div>
-          <label
-            htmlFor="name"
-            className="mb-1 block text-sm font-medium text-[#5a2e34]"
-          >
+          <label htmlFor="name" className="mb-1 block text-sm font-medium text-[#5a2e34]">
             Nome completo
           </label>
           <input
@@ -415,16 +417,11 @@ export function LeadEvaluationForm() {
             className="w-full rounded-xl border border-[#dab98f] bg-white/90 px-4 py-3 text-[#3e2428] shadow-sm outline-none transition focus:border-[#a44651] focus:ring-2 focus:ring-[#eed5d8]"
             placeholder="Digite seu nome"
           />
-          {errors.name ? (
-            <p className="mt-1 text-xs text-[#8e2f3a]">{errors.name.message}</p>
-          ) : null}
+          {errors.name ? <p className="mt-1 text-xs text-[#8e2f3a]">{errors.name.message}</p> : null}
         </div>
 
         <div>
-          <label
-            htmlFor="phone"
-            className="mb-1 block text-sm font-medium text-[#5a2e34]"
-          >
+          <label htmlFor="phone" className="mb-1 block text-sm font-medium text-[#5a2e34]">
             Telefone com DDD
           </label>
           <input
@@ -435,9 +432,7 @@ export function LeadEvaluationForm() {
             className="w-full rounded-xl border border-[#dab98f] bg-white/90 px-4 py-3 text-[#3e2428] shadow-sm outline-none transition focus:border-[#a44651] focus:ring-2 focus:ring-[#eed5d8]"
             placeholder="(53) 99999-9999"
           />
-          {errors.phone ? (
-            <p className="mt-1 text-xs text-[#8e2f3a]">{errors.phone.message}</p>
-          ) : null}
+          {errors.phone ? <p className="mt-1 text-xs text-[#8e2f3a]">{errors.phone.message}</p> : null}
         </div>
 
         <label className="flex items-start gap-3 rounded-xl border border-[#dab98f] bg-[#fff8ef]/80 p-3 text-sm text-[#6b4d47]">
@@ -447,9 +442,8 @@ export function LeadEvaluationForm() {
             className="mt-1 h-4 w-4 rounded border-[#dab98f] text-[#a44651]"
           />
           <span className="leading-6">
-            Autorizo o uso dos meus dados para receber meu cupom de avaliação
-            gratuita e contato de atendimento da {clinicInfo.name}. Li e
-            concordo com a{" "}
+            Autorizo o uso dos meus dados para receber meu cupom de avaliação gratuita e contato de
+            atendimento da {clinicInfo.name}. Li e concordo com a{" "}
             <Link
               href="/politica-de-privacidade"
               target="_blank"
@@ -460,9 +454,7 @@ export function LeadEvaluationForm() {
             .
           </span>
         </label>
-        {errors.consent ? (
-          <p className="text-xs text-[#8e2f3a]">{errors.consent.message}</p>
-        ) : null}
+        {errors.consent ? <p className="text-xs text-[#8e2f3a]">{errors.consent.message}</p> : null}
 
         {requestError ? (
           <div className="rounded-xl border border-[#d7a7ae] bg-[#fae9ec] p-3 text-sm text-[#8e2f3a]">
@@ -487,15 +479,9 @@ export function LeadEvaluationForm() {
       {evaluationCode ? (
         <div className="mt-5 rounded-2xl border border-[#dab98f] bg-[#f7ebdd] p-4">
           <p className="text-sm text-[#6b4d47]">Seu cupom de avaliação gratuita:</p>
-          <p className="mt-1 text-4xl font-semibold tracking-[0.25em] text-[#a44651]">
-            {evaluationCode}
-          </p>
+          <p className="mt-1 text-4xl font-semibold tracking-[0.25em] text-[#a44651]">{evaluationCode}</p>
 
-          {customerName ? (
-            <p className="mt-1 text-sm text-[#6b4d47]">
-              Cliente: {customerName}
-            </p>
-          ) : null}
+          {customerName ? <p className="mt-1 text-sm text-[#6b4d47]">Cliente: {customerName}</p> : null}
 
           {evaluationValidUntilLabel ? (
             <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-[#8b3743]">
@@ -504,8 +490,8 @@ export function LeadEvaluationForm() {
           ) : null}
 
           <p className="mt-2 text-xs text-[#6b4d47]">
-            O cupom foi gerado nesta página. Escolha abaixo se deseja
-            compartilhar no WhatsApp ou salvar a imagem no seu celular.
+            O cupom foi gerado nesta página. Escolha abaixo se deseja compartilhar no WhatsApp ou
+            salvar a imagem no seu celular.
           </p>
 
           <div className="mt-4 rounded-xl border border-[#dab98f] bg-white p-2">
@@ -562,7 +548,6 @@ export function LeadEvaluationForm() {
               Copiar mensagem para WhatsApp
             </button>
           </div>
-
         </div>
       ) : null}
     </div>
