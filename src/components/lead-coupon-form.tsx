@@ -70,22 +70,11 @@ type LeadApiError = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-function closePopup(popup: Window | null) {
-  if (popup && !popup.closed) {
-    popup.close();
-  }
-}
-
-function navigatePopup(popup: Window | null, url: string): boolean {
-  if (!popup || popup.closed) {
-    return false;
-  }
-
+function openInNewTab(url: string): boolean {
   try {
-    popup.location.href = url;
-    return true;
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    return popup !== null;
   } catch {
-    closePopup(popup);
     return false;
   }
 }
@@ -97,6 +86,7 @@ export function LeadEvaluationForm() {
   const [evaluationValidUntilLabel, setEvaluationValidUntilLabel] = useState<string | null>(
     null
   );
+  const [autoOpenFailed, setAutoOpenFailed] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
   const {
@@ -148,19 +138,8 @@ export function LeadEvaluationForm() {
 
   const onSubmit = async (values: LeadFormInput) => {
     setRequestError(null);
+    setAutoOpenFailed(false);
     trackEvent("lead_form_submit_attempt");
-
-    let whatsappWindow: Window | null = null;
-    let shareWindow: Window | null = null;
-
-    if (typeof window !== "undefined") {
-      if (AUTO_OPEN_EVALUATION_WHATSAPP) {
-        whatsappWindow = window.open("about:blank", "_blank");
-      }
-      if (AUTO_OPEN_EVALUATION_SHARE_TAB) {
-        shareWindow = window.open("about:blank", "_blank");
-      }
-    }
 
     const normalizedPhone = normalizeToE164Brazil(values.phone);
 
@@ -177,9 +156,6 @@ export function LeadEvaluationForm() {
         }),
       });
     } catch {
-      closePopup(whatsappWindow);
-      closePopup(shareWindow);
-
       const message = "Não foi possível conectar ao servidor. Tente novamente.";
       setRequestError(message);
       trackEvent("lead_form_submit_error", { message });
@@ -196,9 +172,6 @@ export function LeadEvaluationForm() {
     }
 
     if (!response.ok) {
-      closePopup(whatsappWindow);
-      closePopup(shareWindow);
-
       const errorPayload = (payload ?? {}) as LeadApiError;
       const message = errorPayload.error ?? "Erro ao gerar cupom de avaliação gratuita. Tente novamente.";
       setRequestError(message);
@@ -208,9 +181,6 @@ export function LeadEvaluationForm() {
     }
 
     if (!payload || !("couponCode" in payload) || !("leadId" in payload)) {
-      closePopup(whatsappWindow);
-      closePopup(shareWindow);
-
       const message = "Resposta inesperada do servidor ao gerar o cupom. Tente novamente.";
       setRequestError(message);
       trackEvent("lead_form_submit_error", { message });
@@ -239,21 +209,28 @@ export function LeadEvaluationForm() {
         issuedAt: issuedAtIso,
       });
       const shareTabUrl = `${window.location.origin}/cupom-avaliacao?${params.toString()}`;
+      let blockedAnyAutoOpen = false;
 
       if (AUTO_OPEN_EVALUATION_WHATSAPP) {
-        const openedWhatsapp = navigatePopup(whatsappWindow, generatedWhatsappUrl);
+        const openedWhatsapp = openInNewTab(generatedWhatsappUrl);
 
         if (!openedWhatsapp) {
-          window.open(generatedWhatsappUrl, "_blank", "noopener,noreferrer");
+          blockedAnyAutoOpen = true;
         }
       }
 
       if (AUTO_OPEN_EVALUATION_SHARE_TAB) {
-        const openedShareTab = navigatePopup(shareWindow, shareTabUrl);
+        const openedShareTab = openInNewTab(shareTabUrl);
 
         if (!openedShareTab) {
-          window.open(shareTabUrl, "_blank", "noopener,noreferrer");
+          blockedAnyAutoOpen = true;
         }
+      }
+
+      setAutoOpenFailed(blockedAnyAutoOpen);
+
+      if (blockedAnyAutoOpen) {
+        toast.message("O navegador bloqueou a abertura automática. Use os botões manuais abaixo.");
       }
     }
 
@@ -424,34 +401,39 @@ export function LeadEvaluationForm() {
             </p>
           )}
 
-          {!AUTO_OPEN_EVALUATION_WHATSAPP || !AUTO_OPEN_EVALUATION_SHARE_TAB ? (
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              {!AUTO_OPEN_EVALUATION_WHATSAPP && evaluationWhatsappUrl ? (
-                <TrackedLink
-                  href={evaluationWhatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  eventName="manual_evaluation_whatsapp_open_click"
-                  eventPayload={{ evaluationCode }}
-                  className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
-                >
-                  Abrir WhatsApp manualmente
-                </TrackedLink>
-              ) : null}
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            {evaluationWhatsappUrl ? (
+              <TrackedLink
+                href={evaluationWhatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                eventName="manual_evaluation_whatsapp_open_click"
+                eventPayload={{ evaluationCode }}
+                className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
+              >
+                Abrir WhatsApp manualmente
+              </TrackedLink>
+            ) : null}
 
-              {!AUTO_OPEN_EVALUATION_SHARE_TAB && evaluationShareTabUrl ? (
-                <TrackedLink
-                  href={evaluationShareTabUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  eventName="manual_evaluation_share_tab_open_click"
-                  eventPayload={{ evaluationCode }}
-                  className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
-                >
-                  Abrir página de compartilhamento
-                </TrackedLink>
-              ) : null}
-            </div>
+            {evaluationShareTabUrl ? (
+              <TrackedLink
+                href={evaluationShareTabUrl}
+                target="_blank"
+                rel="noreferrer"
+                eventName="manual_evaluation_share_tab_open_click"
+                eventPayload={{ evaluationCode }}
+                className="inline-flex rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8]"
+              >
+                Abrir página de compartilhamento
+              </TrackedLink>
+            ) : null}
+          </div>
+
+          {autoOpenFailed ? (
+            <p className="mt-2 text-xs text-[#6b4d47]">
+              O navegador bloqueou a abertura automática de nova aba. Use os
+              atalhos manuais acima.
+            </p>
           ) : null}
         </div>
       ) : null}
