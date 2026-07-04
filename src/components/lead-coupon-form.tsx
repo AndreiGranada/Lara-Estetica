@@ -280,21 +280,6 @@ export function LeadEvaluationForm() {
     window.location.assign(evaluationWhatsappUrl);
   };
 
-  const copyCouponCode = async () => {
-    if (!evaluationCode) {
-      return;
-    }
-
-    const copied = await copyTextToClipboard(evaluationCode);
-
-    if (copied) {
-      trackEvent("evaluation_coupon_code_copy", { evaluationCode });
-      toast.success(`Código ${evaluationCode} copiado.`);
-    } else {
-      toast.error("Não foi possível copiar o código automaticamente.");
-    }
-  };
-
   const copyWhatsappMessage = async () => {
     if (!evaluationCode || !customerName) {
       return;
@@ -310,20 +295,6 @@ export function LeadEvaluationForm() {
     } else {
       toast.error("Não foi possível copiar a mensagem automaticamente.");
     }
-  };
-
-  const clearStoredCoupon = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(EVALUATION_COUPON_STORAGE_KEY);
-    }
-
-    setEvaluationCode(null);
-    setCustomerName("");
-    setEvaluationIssuedAtIso(null);
-    setEvaluationValidUntilLabel(null);
-    setCouponImageDataUrl(null);
-    trackEvent("evaluation_coupon_clear_local");
-    toast.message("Cupom removido deste aparelho.");
   };
 
   const onSubmit = async (values: LeadFormInput) => {
@@ -585,22 +556,6 @@ export function LeadEvaluationForm() {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={copyCouponCode}
-              disabled={!evaluationCode}
-              className="inline-flex items-center justify-center rounded-xl border border-[#a44651] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#a44651] transition hover:bg-[#eed5d8] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Copiar código do cupom
-            </button>
-
-            <button
-              type="button"
-              onClick={clearStoredCoupon}
-              className="inline-flex items-center justify-center rounded-xl border border-[#d7a7ae] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#8e2f3a] transition hover:bg-[#fae9ec]"
-            >
-              Limpar cupom deste aparelho
-            </button>
           </div>
 
           <div className="mt-3 rounded-xl border border-[#dab98f] bg-white/80 p-3 text-xs text-[#6b4d47]">
