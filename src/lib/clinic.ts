@@ -49,7 +49,7 @@ export const faqItems = [
   {
     question: "Os dados do cadastro ficam salvos?",
     answer:
-      "Sim. Apenas quem opta pelo cadastro para cupom de avaliação gratuita é salvo no banco com consentimento LGPD.",
+      "Sim. Os dados informados para liberar o cupom de avaliação gratuita são salvos no banco conforme a política de privacidade.",
   },
 ];
 

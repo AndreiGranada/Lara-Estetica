@@ -91,17 +91,6 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-function buildWhatsappFallbackUrls(message: string): string[] {
-  const encodedMessage = encodeURIComponent(message);
-  const phone = clinicInfo.whatsappNumber;
-
-  return [
-    `whatsapp://send?phone=${phone}&text=${encodedMessage}`,
-    `https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`,
-    `https://wa.me/${phone}?text=${encodedMessage}`,
-  ];
-}
-
 export function LeadEvaluationForm() {
   const [evaluationCode, setEvaluationCode] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
@@ -205,7 +194,7 @@ export function LeadEvaluationForm() {
   };
 
   const shareCouponOnWhatsapp = async () => {
-    if (!evaluationCode || !customerName || !evaluationWhatsappUrl) {
+    if (!evaluationCode || !customerName || !evaluationWhatsappUrl || !evaluationWhatsappDirectUrl) {
       return;
     }
 
@@ -249,23 +238,12 @@ export function LeadEvaluationForm() {
     trackEvent("evaluation_whatsapp_open_same_tab", { evaluationCode });
     setStepStatus((previous) => ({ ...previous, whatsappOpened: true }));
 
-    const fallbackUrls = buildWhatsappFallbackUrls(message);
-
-    for (const url of fallbackUrls) {
-      try {
-        window.location.href = url;
-        return;
-      } catch {
-        // Continue fallback chain.
-      }
-    }
-
     const copied = await copyTextToClipboard(message);
     if (copied) {
-      toast.message("Não foi possível abrir o WhatsApp automaticamente. Mensagem copiada.");
-    } else {
-      toast.error("Não foi possível abrir o WhatsApp neste navegador.");
+      toast.message("Abrindo WhatsApp. Caso não abra, use o botão de link direto.");
     }
+
+    window.location.assign(evaluationWhatsappDirectUrl);
   };
 
   const copyWhatsappMessage = async () => {
@@ -386,8 +364,8 @@ export function LeadEvaluationForm() {
         Garanta seu cupom de avaliação gratuita
       </h3>
       <p className="mt-2 text-sm leading-6 text-[#6b4d47]">
-        O cadastro é opcional, mas necessário para liberar seu cupom de avaliação gratuita. Depois
-        de gerar o código, você envia no WhatsApp da clínica.
+        Preencha nome e telefone para liberar seu cupom de avaliação gratuita. Depois de gerar o
+        código, você envia no WhatsApp da clínica.
       </p>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
